@@ -42,17 +42,22 @@ $(document).ready(function(){
     document.oncontextmenu = function(e){
 		return false;
 	}
-	write("./hackAttack", function(){
-		write("initiallizing....................................", function(){
-			write("Start!", function(){
-				setInterval(gameLoop, 60);
-				setInterval(paintLoop, 60);
-				setInterval(canUpdateLoop, 10);
-				setInterval(canPaintLoop, 10);
+	write("./hackAttack", true, function(){
+		write("initiallizing....................................", true, function(){
+			write("Start!", true, function(){
+				gameInterval = setInterval(gameLoop, 60);
+				paintInterval = setInterval(paintLoop, 60);
+				canUpdateInterval = setInterval(canUpdateLoop, 10);
+				canPaintInterval = setInterval(canPaintLoop, 10);
 			});
 		});
 	});
 });
+
+var gameInterval;
+var paintInterval;
+var canUpdateInterval;
+var canPaintInterval;
 
 var debug = false;
 var ctx;
@@ -346,6 +351,7 @@ var newRedBull = function(x, y, xvel, yvel){
 					}
 					this.colliding(hackers, function(hacker){
 						hackers.splice(hackers.indexOf(hacker), 1);
+						write("satisfy hacker --id "+ Math.floor(Math.random()*8649521), true);
 					});
 				},
 				paint:function(){
@@ -403,11 +409,14 @@ var Player = {
 			});
 		});
 		Player.colliding(hackers, function(hacker){
-
-			Player.hp-=10;
-			write("Ouch! HP:"+Player.hp, function(){});
-			if(Player.hp <= 0){
-				write("You Failed, The Hackers got to angsty");
+			if(Player.hp > 0){
+				Player.hp-=10;
+				write("Ouch! HP:"+Player.hp, true, function(){});
+				if(Player.hp <= 0){
+					write("You Failed, The Hackers got to angsty", true);
+					clearInterval(gameInterval);
+					clearInterval(paintInterval);
+				}
 			}
 			hackers.splice(hackers.indexOf(hacker), 1);
 
@@ -482,16 +491,30 @@ var angleSprite = function(ang){
 }
 var terminal = $('#terminal');
 var writeLetter = function(h1, word, callback){
-	if(word.length == 0) callback();
-	else{
-		h1.append(word[0]);
-		console.log(word);
+	if(word.length == 0){
+		if(callback != undefined) callback();
+		
+	}else{
+		var logs = $('#terminal').children();
+		var h1_H = $(logs[0]).outerHeight(true);
+		var num  = $(logs).length;
+		
+		if(h1_H*num+50 > GAME_HEIGHT)
+			$(logs[0]).remove();
+
+
+		if(word[0]=="#")
+			h1.append($("<br>"));
+		else
+			h1.append(word[0]);
 		word.splice(0, 1);
 		setTimeout(function(){writeLetter(h1, word, callback)}, 10);
 	}
 }
-var write = function(text, callback){
-	var h1 = $('<h1>hackAttack@mhacks $ </h1>');
+var write = function(text, prompt, callback){
+	if(prompt)
+		prompt = "Sponsor-1@GameJam $ ";
+	var h1 = $('<h1>' + prompt + '</h1>');
 	$('#terminal').append(h1);
 	writeLetter(h1, text.split(""), callback);
 }
