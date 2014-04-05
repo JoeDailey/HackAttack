@@ -63,7 +63,7 @@ var debug = false;
 var ctx;
 var keysDown = new Array();
 var buttonsDown = new Array();
-var mouse;
+var mouse ={x:0, y:0};
 
 
 var canvas;
@@ -72,6 +72,7 @@ var GAME_WIDTH;
 var MAX_HACKERS = 100;
 var hackers = new Array();
 var redBulls = new Array();
+var pillows = new Array();
 var canFire = true;
 
 var shirts =[
@@ -171,6 +172,16 @@ main[5].src = "img/main5.png";
 main[6].src = "img/main6.png";
 main[7].src = "img/main7.png";
 
+var pillowimg = [new Image(),
+			new Image(),
+			new Image(),
+			new Image()];
+
+pillowimg[0].src = "img/pillow_0.png";
+pillowimg[1].src = "img/pillow_1.png";
+pillowimg[2].src = "img/pillow_2.png";
+pillowimg[3].src = "img/pillow_3.png";
+
 var gameLoop = function(){
 	//controls--------------------------------------///////---
 	for (var i = keysDown.length - 1; i >= 0; i--) {
@@ -222,11 +233,15 @@ var gameLoop = function(){
 				hackers.push(newHacker(obj.X, obj.Y, color));
 		}
 	}
-
+	if(pillows.length < 3 && Math.random()<=(100-Player.hp)/1000)
+		newPillow();
 
 	Player.update();
 	for (var i = hackers.length - 1; i >= 0; i--) {
 		hackers[i].update();
+	};
+	for (var i = pillows.length - 1; i >= 0; i--) {
+		pillows[i].update();
 	};
 }
 var paintLoop = function(){
@@ -238,6 +253,9 @@ var paintLoop = function(){
 
 	for (var i = hackers.length - 1; i >= 0; i--) {
 		hackers[i].paint();
+	};
+	for (var i = pillows.length - 1; i >= 0; i--) {
+		pillows[i].paint();
 	};
 	ctx.beginPath();
 	ctx.arc(mouse.x,mouse.y,5,0,2*Math.PI);
@@ -413,7 +431,7 @@ var Player = {
 				Player.hp-=10;
 				write("Ouch! HP:"+Player.hp, true, function(){});
 				if(Player.hp <= 0){
-					write("You Failed, The Hackers got to angsty", true);
+					write("You Failed, The Hackers got too angsty", true);
 					clearInterval(gameInterval);
 					clearInterval(paintInterval);
 				}
@@ -423,9 +441,15 @@ var Player = {
 		});
 	},
 	paint:function(){
-		angulate(mouse.x - Player.X - Player.radius, mouse.y - Player.Y - Player.radius, function(ang, mag){
-			ctx.drawImage(Player.image[angleSprite(ang)], Player.X - Player.radius, Player.Y - Player.radius);	
-		});
+		try{
+			angulate(mouse.x - Player.X - Player.radius, mouse.y - Player.Y - Player.radius, function(ang, mag){
+				ctx.drawImage(Player.image[angleSprite(ang)], Player.X - Player.radius, Player.Y - Player.radius);	
+			});
+		}catch(e){
+			angulate(mouse.x - Player.X - Player.radius, mouse.y - Player.Y - Player.radius, function(ang, mag){
+				ctx.drawImage(Player.image[angleSprite(ang)], Player.X - Player.radius, Player.Y - Player.radius);	
+			});
+		}
 
 		if(debug){
 			ctx.moveTo(this.X,this.Y);
@@ -446,6 +470,36 @@ var Player = {
 		};
 	}
 };
+
+var newPillow = function(){
+	var pillow = {
+		X:((GAME_WIDTH-50)*Math.random()+25),
+		Y:((GAME_HEIGHT-50)*Math.random()+25),
+		image:pillowimg,
+		radius:40,
+		state:0,
+		update:function(){
+			this.colliding(Player);
+			this.state = (this.state+1)%12;
+		},
+		paint:function(){//Math.floor(this.state/3)
+				ctx.drawImage(this.image[3], this.X - this.radius, this.Y - this.radius);
+		},
+		distance:function(object){
+			if(object.X != undefined && object.Y != undefined){
+				return Math.sqrt((this.X-object.X)*(this.X-object.X) + (this.Y-object.Y)*(this.Y-object.Y));
+			}
+		},
+		colliding:function(object){
+			if(this.distance(object)<this.radius+object.radius){
+				Player.hp += 30;
+				write("Nap Taken: HP +30");
+				pillows.splice(pillows.indexOf(this), 1);
+			}
+		}
+	}
+	pillows.push(pillow);
+}
 //Misc-------------------------------------------------//////--
 var angulate = function(x, y, callback){//(ang, mag)
 	if(x==0)x=0.01;
