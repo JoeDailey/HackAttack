@@ -47,8 +47,8 @@ $(document).ready(function(){
 			write("Start!", true, function(){
 				gameInterval = setInterval(gameLoop, 60);
 				paintInterval = setInterval(paintLoop, 60);
-				canUpdateInterval = setInterval(canUpdateLoop, 10);
-				canPaintInterval = setInterval(canPaintLoop, 10);
+				canUpdateInterval = setInterval(canUpdateLoop, 50);
+				canPaintInterval = setInterval(canPaintLoop, 50);
 			});
 		});
 	});
@@ -65,6 +65,9 @@ var keysDown = new Array();
 var buttonsDown = new Array();
 var mouse ={x:0, y:0};
 
+var KOTO;
+var healthLog = $("#health");
+var scoreLog = $("#score");
 
 var canvas;
 var GAME_HEIGHT;
@@ -151,8 +154,19 @@ for (var i = 0; i < shirts.length; i++) {
 	}
 }
 
-var can = new Image();
-can.src ="img/can.png";
+var can = [ new Image(),
+			new Image(),
+			new Image(),
+			new Image(),
+			new Image(),
+			new Image(),
+			new Image(),
+			new Image(),
+			new Image(),
+			new Image(),
+			new Image()];
+for(var i = 0; i < 11; i ++)
+	can[i].src ="img/can_"+i+".png";
 
 var main = [new Image(),
 			new Image(),
@@ -182,6 +196,8 @@ pillowimg[1].src = "img/pillow_1.png";
 pillowimg[2].src = "img/pillow_2.png";
 pillowimg[3].src = "img/pillow_3.png";
 
+
+var canThrow = true;
 var gameLoop = function(){
 	//controls--------------------------------------///////---
 	for (var i = keysDown.length - 1; i >= 0; i--) {
@@ -196,14 +212,17 @@ var gameLoop = function(){
 	for (var i = buttonsDown.length - 1; i >= 0; i--) {
 		switch(buttonsDown[i]){
 			case 1:
-					angulate(mouse.x - Player.X, mouse.y - Player.Y, function(ang, mag){
-						mag = 8;
-						rectulate(ang, mag, function(x, y){
-							var bull = newRedBull(Player.X, Player.Y, x, y);
-							redBulls.push(bull);
+				if(canThrow){
+						angulate(mouse.x - Player.X, mouse.y - Player.Y, function(ang, mag){
+							mag = 8;
+							rectulate(ang, mag, function(x, y){
+								var bull = newRedBull(Player.X, Player.Y, x*0.01, y*0.01);
+								redBulls.push(bull);
+								canThrow = false;
+								setTimeout(function(){canThrow=true},60);
+						});
 					});
-				});
-				
+				}
 			break;
 		}
 	};
@@ -247,6 +266,8 @@ var gameLoop = function(){
 var paintLoop = function(){
 	
 	$('#console').html(buttonsDown);
+	$("#health").html(Player.hp);
+	$("#score").html(Player.score+"@"+Player.score_multiplier+"x");
 	ctx.clearRect(0,0,GAME_WIDTH, GAME_HEIGHT);
 	
 	Player.paint();
@@ -349,6 +370,7 @@ var newRedBull = function(x, y, xvel, yvel){
 				Yvel:yvel,
 				painting:false,
 				radius:5,
+				sprite:0,
 				update:function(){
 					if(this.Xvel==0)this.Xvel=0.01;
 					var ang = Math.atan(this.Yvel/this.Xvel);
@@ -370,12 +392,19 @@ var newRedBull = function(x, y, xvel, yvel){
 					this.colliding(hackers, function(hacker){
 						hackers.splice(hackers.indexOf(hacker), 1);
 						write("satisfy hacker --id "+ Math.floor(Math.random()*8649521), true);
+						Player.score_multiplier*=2;
+						clearInterval(KOTO);
+						KOTO = setTimeout(function(){
+							Player.score_multiplier = 1;
+						}, 120);
+						Player.score+=Player.score_multiplier;;
 					});
 				},
 				paint:function(){
 					if(this.distance(Player)>this.radius+Player.radius) this.painting = true;
 					if(this.painting==true)
-						ctx.drawImage(this.image, this.X, this.Y);
+						ctx.drawImage(this.image[this.sprite], this.X, this.Y);
+					this.sprite = (this.sprite+1)%11;
 					if(debug){
 						ctx.moveTo(this.X,this.Y);
 						ctx.lineTo(this.X+this.Xvel*10, this.Y+this.Yvel*10);
@@ -407,6 +436,8 @@ var Player = {
 	Yvel:0.0,
 	radius:40,
 	hp:100,
+	score:0,
+	score_multiplier:1,
 	update:function(){
 		angulate(this.Xvel, this.Yvel, function(ang, mag){
 			if(mag > Player.MAGVEL){
@@ -434,6 +465,8 @@ var Player = {
 					write("You Failed, The Hackers got too angsty", true);
 					clearInterval(gameInterval);
 					clearInterval(paintInterval);
+					clearInterval(canPaintInterval);
+					clearInterval(canUpdateInterval);
 				}
 			}
 			hackers.splice(hackers.indexOf(hacker), 1);
